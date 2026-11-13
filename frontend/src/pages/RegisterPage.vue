@@ -53,11 +53,12 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 async function handleRegister() {
+  error.value = ''
   try {
     await authStore.register(username.value, email.value, password.value)
-    router.push('/books')
+    await router.push('/books')
   } catch (err) {
-    error.value = 'Registration failed. Email may already exist.'
+    error.value = err.response?.data?.message || 'Registration failed. Email may already exist.'
   }
 }
 </script>

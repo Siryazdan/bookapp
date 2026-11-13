@@ -3,7 +3,6 @@
     <!-- Book Cover -->
     <div v-if="book.coverImageUrl" class="mb-4">
       <img
-          v-if="book.coverImageUrl"
           :src="book.coverImageUrl"
           alt="Cover Image"
           class="w-full max-h-[400px] object-contain rounded-xl border border-gray-200 dark:border-gray-600 mb-4"
@@ -51,7 +50,9 @@
 </template>
 
 <script setup>
-defineProps(['book'])
+defineProps({
+  book: { type: Object, required: true },
+})
 defineEmits(['favorite', 'toRead', 'edit', 'delete'])
 </script>
 

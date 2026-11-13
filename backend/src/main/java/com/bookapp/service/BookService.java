@@ -1,57 +1,62 @@
 package com.bookapp.service;
 
+import com.bookapp.exception.ApiException;
 import com.bookapp.model.Book;
 import com.bookapp.model.User;
 import com.bookapp.repository.BookRepository;
 import com.bookapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
+/**
+ * All methods work only on the books of the given user (identified by email),
+ * so nobody can read, change or delete another user's books.
+ */
 @Service
 @RequiredArgsConstructor
 public class BookService {
 
     private final BookRepository bookRepository;
-    private final UserRepository userRepository; // ✅ needed to fetch user by email
+    private final UserRepository userRepository;
 
-    public Book createBook(Book book) {
-        System.out.println("📥 Saving book: " + book.getTitle());
-        Book saved = bookRepository.save(book);
-        System.out.println("✅ Book saved with ID: " + saved.getId());
-        return saved;
+    @Transactional
+    public Book createBook(Book book, String ownerEmail) {
+        User owner = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+        book.setId(null); // never let the client choose/overwrite an ID
+        book.setOwner(owner);
+        return bookRepository.save(book);
     }
 
-    public List<Book> getBooksByEmail(String email) {
-        return bookRepository.findByOwnerEmail(email);
+    @Transactional(readOnly = true)
+    public List<Book> getBooks(String ownerEmail) {
+        return bookRepository.findByOwnerEmail(ownerEmail);
     }
 
-    public List<Book> getAllBooks() {
-        return bookRepository.findAll();
+    @Transactional(readOnly = true)
+    public Book getBook(Long id, String ownerEmail) {
+        return bookRepository.findByIdAndOwnerEmail(id, ownerEmail)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Book not found"));
     }
 
-    public Optional<Book> getBookById(Long id) {
-        return bookRepository.findById(id);
+    @Transactional
+    public Book updateBook(Long id, Book updatedData, String ownerEmail) {
+        Book existing = getBook(id, ownerEmail);
+        existing.setTitle(updatedData.getTitle());
+        existing.setAuthor(updatedData.getAuthor());
+        existing.setGenre(updatedData.getGenre());
+        existing.setPublicationYear(updatedData.getPublicationYear());
+        existing.setDescription(updatedData.getDescription());
+        existing.setCoverImageUrl(updatedData.getCoverImageUrl());
+        return bookRepository.save(existing);
     }
 
-    public Book updateBook(Book existingBook, Book updatedData) {
-        existingBook.setTitle(updatedData.getTitle());
-        existingBook.setAuthor(updatedData.getAuthor());
-        existingBook.setGenre(updatedData.getGenre());
-        existingBook.setPublicationYear(updatedData.getPublicationYear());
-        existingBook.setDescription(updatedData.getDescription());
-        existingBook.setCoverImageUrl(updatedData.getCoverImageUrl());
-        return bookRepository.save(existingBook);
-    }
-
-    public void deleteBook(Long id) {
-        bookRepository.deleteById(id);
-    }
-
-    // ✅ NEW: get user by email
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email).orElse(null);
+    @Transactional
+    public void deleteBook(Long id, String ownerEmail) {
+        bookRepository.delete(getBook(id, ownerEmail));
     }
 }
