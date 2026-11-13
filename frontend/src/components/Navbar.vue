@@ -20,7 +20,7 @@
         Logout
       </button>
       <button @click="toggleDark" class="text-gray-700 dark:text-gray-300 hover:text-black transition">
-        {{ isDark ? '🌙 Dark Mode' : '☀️ Light Mode' }}
+        {{ isDark ? '☀️ Light Mode' : '🌙 Dark Mode' }}
       </button>
     </div>
   </nav>
@@ -38,17 +38,13 @@ function logout() {
   authStore.logout()
   router.push('/login')
 }
-const isDark = ref(false)
+// Start with the current theme (it is restored in main.js)
+const isDark = ref(document.documentElement.classList.contains('dark'))
 
 function toggleDark() {
   isDark.value = !isDark.value
-
-  if (isDark.value) {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
-
 
 </script>

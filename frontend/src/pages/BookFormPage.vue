@@ -23,18 +23,13 @@
           <select v-model="book.genre" required
                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             <option value="" disabled>Select genre</option>
-            <option value="Sci-Fi">Fiction</option>
-            <option value="Romance">Non-Fiction</option>
-            <option value="Fantasy">Fantasy</option>
-            <option value="Mystery">Mystery</option>
-            <option value="Horror">Biography</option>
-            <option value="History">History</option>
+            <option v-for="genre in genres" :key="genre" :value="genre">{{ genre }}</option>
           </select>
         </div>
 
         <div>
           <label class="block mb-1 font-semibold text-gray-700 dark:text-gray-300">Publication Year</label>
-          <input type="number" v-model.number="book.publicationYear" required
+          <input type="number" v-model.number="book.publicationYear" required min="1000" max="2100"
                  class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
         </div>
 
@@ -54,9 +49,11 @@
           <img :src="previewUrl" alt="Cover Preview" class="w-40 h-60 object-cover rounded-lg shadow-md" />
         </div>
 
+        <p v-if="error" class="text-red-500 text-sm text-center">{{ error }}</p>
+
         <div class="space-y-3">
-          <button type="submit"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
+          <button type="submit" :disabled="saving"
+                  class="disabled:opacity-50 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
             {{ isEditMode ? 'Update Book' : 'Create Book' }}
           </button>
 
@@ -75,6 +72,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createBook, updateBook, getBook, deleteBook } from '../api/BookApi.js'
+import { GENRES } from '../genres.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,26 +87,33 @@ const book = ref({
   coverImageUrl: '',
 })
 
+const genres = GENRES
 const previewUrl = ref('')
+const error = ref('')
+const saving = ref(false)
+
+// Shows the message from the backend if there is one
+const errorMessage = (err, fallback) => err.response?.data?.message || fallback
 
 const updatePreview = () => {
   previewUrl.value = book.value.coverImageUrl || ''
 }
 
 onMounted(async () => {
-  console.log("BookFormPage mounted. Route ID:", route.params.id)
   if (isEditMode.value) {
     try {
       const response = await getBook(route.params.id)
       book.value = response.data
       updatePreview()
-    } catch (error) {
-      console.error('Error fetching book:', error)
+    } catch (err) {
+      error.value = errorMessage(err, 'Could not load the book.')
     }
   }
 })
 
 const handleSubmit = async () => {
+  error.value = ''
+  saving.value = true
   try {
     if (isEditMode.value) {
       await updateBook(route.params.id, book.value)
@@ -116,8 +121,10 @@ const handleSubmit = async () => {
       await createBook(book.value)
     }
     await router.push('/books')
-  } catch (error) {
-    console.error('Error saving book:', error)
+  } catch (err) {
+    error.value = errorMessage(err, 'Could not save the book. Please check your input.')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -128,8 +135,8 @@ const handleDelete = async () => {
   try {
     await deleteBook(route.params.id)
     await router.push('/books')
-  } catch (error) {
-    console.error('Error deleting book:', error)
+  } catch (err) {
+    error.value = errorMessage(err, 'Could not delete the book.')
   }
 }
 </script>

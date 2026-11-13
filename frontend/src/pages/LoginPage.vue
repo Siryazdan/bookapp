@@ -45,11 +45,12 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 async function handleLogin() {
+  error.value = ''
   try {
     await authStore.login(email.value, password.value)
     await router.push('/books')
   } catch (err) {
-    error.value = 'Login failed. Please check your credentials.'
+    error.value = err.response?.data?.message || 'Login failed. Please check your credentials.'
   }
 }
 </script>
